@@ -1,33 +1,25 @@
 import cv2
-import numpy as np
 
-# Load your image
-img = cv2.imread("my_image.jpg")  # ← change to your image file
+def read_qr_from_image(path):
+    """
+    Reads a QR code from an image file.
+    Returns (value, img_with_box)
+    """
 
-detector = cv2.QRCodeDetector()
+    img = cv2.imread(path)
+    if img is None:
+        raise FileNotFoundError(f"Image not found: {path}")
 
-# Detect and decode
-value, points, _ = detector.detectAndDecode(img)
+    detector = cv2.QRCodeDetector()
+    value, points, _ = detector.detectAndDecode(img)
 
-if value != "":
-    points = points[0]  # simplify array
+    if value and points is not None:
+        pts = points[0]  # simplify shape
+        x1, y1 = int(pts[0][0]), int(pts[0][1])
+        x2, y2 = int(pts[2][0]), int(pts[2][1])
 
-    # Points come in order: top-left, top-right, bottom-right, bottom-left
-    x1, y1 = int(points[0][0]), int(points[0][1])
-    x2, y2 = int(points[2][0]), int(points[2][1])
+        cv2.rectangle(img, (x1, y1), (x2, y2), (0,255,0), 2)
+        cv2.putText(img, value, (x1, y1 - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2)
 
-    # Draw box
-    cv2.rectangle(img, (x1, y1), (x2, y2), (0,255,0), 2)
-
-    # Print detected value
-    print("QR Value:", value)
-
-    # Draw value on image
-    cv2.putText(img, value, (30, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
-else:
-    print("No QR code detected.")
-
-# Show image
-cv2.imshow("Image QR Detection", img)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+    return value, img
