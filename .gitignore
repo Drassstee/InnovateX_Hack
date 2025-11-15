@@ -3,3 +3,16 @@ venv/
 .idea/
 __pycache__/
 *.DS_Store
+
+# Model files (can be large)
+models/*.pt
+models/*.pth
+models/*.onnx
+
+# Dataset files (can be large)
+dataset/
+armeta/
+source/
+datasets/*/images/
+datasets/*/labels/
+runs/

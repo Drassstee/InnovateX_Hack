@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['stamp']
+
+roboflow:
+  workspace: mercedes-khci9
+  project: stamp-6ho0x
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/mercedes-khci9/stamp-6ho0x/dataset/1

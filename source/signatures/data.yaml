@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['signature']
+
+roboflow:
+  workspace: minaehyeon
+  project: signature-detection-a75nf
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/minaehyeon/signature-detection-a75nf/dataset/1
