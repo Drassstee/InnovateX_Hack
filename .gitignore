@@ -15,4 +15,4 @@ armeta/
 source/
 datasets/*/images/
 datasets/*/labels/
-runs/
+runs/*/*predict*/
