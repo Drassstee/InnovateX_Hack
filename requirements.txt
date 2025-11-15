@@ -41,3 +41,23 @@ typing_extensions==4.15.0
 ultralytics>=8.0.0
 urllib3==2.5.0
 qrcode[pil]>=7.0.0
+
+# PDF processing
+pdf2image==1.17.0
+
+# QR detection libraries (optional but highly recommended for best results)
+pyzbar==0.1.9
+qreader==3.16
+qrdet==2.5
+
+# System dependencies required:
+# 
+# For pyzbar:
+#   macOS: brew install zbar
+#   Ubuntu/Debian: sudo apt-get install libzbar0
+#   Windows: Usually included in pyzbar wheel
+#
+# For pdf2image:
+#   macOS: brew install poppler
+#   Ubuntu/Debian: sudo apt-get install poppler-utils
+#   Windows: Download from https://github.com/oschwartz10612/poppler-windows/releases
