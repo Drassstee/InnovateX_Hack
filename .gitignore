@@ -3,11 +3,17 @@ venv/
 .idea/
 __pycache__/
 *.DS_Store
+*.pyc
+*.pyo
+*.pyd
+.Python
 
 # Model files (can be large)
-models/*.pt
+# Note: .pt files are included in the repository as they are crucial
 models/*.pth
 models/*.onnx
+*.pth
+*.onnx
 
 # Dataset files (can be large)
 dataset/
@@ -16,3 +22,14 @@ source/
 datasets/*/images/
 datasets/*/labels/
 runs/*/*predict*/
+
+# Generated outputs
+test_pdfs_converted/
+*_converted/
+annotations.json
+
+# IDE
+.vscode/
+*.swp
+*.swo
+*~
