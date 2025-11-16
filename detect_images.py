@@ -7,7 +7,7 @@ CONF_THRESHOLD = 0.5  # Minimum confidence allowed
 
 
 def main():
-    model_path = Path("runs/detect/train8/weights/best.pt")
+    model_path = Path("runs/detect/finetune_frozen3/weights/best.pt")
     test_images = Path("dataset/images/test")
     output_folder = Path("runs/detect/predict_custom")
 

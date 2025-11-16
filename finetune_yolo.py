@@ -11,7 +11,7 @@ import sys
 
 
 def finetune(
-    model_path="models/unified.pt",
+    model_path="runs/detect/train8/weights/best.pt",
     data_yaml="datasets/digital_inspector.yaml",
     epochs=80,
     imgsz=1024,

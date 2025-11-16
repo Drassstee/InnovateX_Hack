@@ -26,7 +26,7 @@ from pdf2image import convert_from_path
 # POPPLER_PATH = r"C:\Users\YourName\poppler\bin"
 #
 # Leave as None to use system PATH or POPPLER_PATH environment variable
-POPPLER_PATH = None  # Set to your poppler bin path if needed (e.g., r"C:\poppler\Library\bin")
+POPPLER_PATH = r"C:\Users\Tema\Downloads\Release-25.11.0-0\poppler-25.11.0\Library\bin"  # Set to your poppler bin path if needed (e.g., r"C:\poppler\Library\bin")
 # ============================================================================
 
 
