@@ -130,9 +130,6 @@ InnovateX_Hack/
 ├── qr_detector.py            # QR code detection module
 ├── json_generator.py         # JSON output generation
 ├── draw_annotations.py       # Visual annotation drawing
-├── yolo_pipeline.py         # YOLO detection pipeline
-├── train_yolo.py            # YOLO model training
-├── prepare_dataset.py       # Dataset preparation utilities
 ├── requirements.txt         # Python dependencies
 └── README.md               # This file
 ```
@@ -193,7 +190,6 @@ Each box includes a label at the top edge.
 - **AMD Ryzen 5 7535HS**: 12-16 workers
 - **General**: Match your CPU thread count, add 20-30% for I/O overlap
 
-See `OPTIMAL_WORKERS.md` for detailed recommendations.
 
 ## Advanced Usage
 
@@ -218,7 +214,6 @@ See `OPTIMAL_WORKERS.md` for detailed recommendations.
      --yolo-model runs/detect/train/weights/best.pt
    ```
 
-See `TRAINING_GUIDE.md` for detailed instructions.
 
 ## Performance
 
@@ -226,7 +221,6 @@ See `TRAINING_GUIDE.md` for detailed instructions.
 - **Parallelization**: Processes multiple pages simultaneously
 - **Optimization**: Cached YOLO model loading, optimized image I/O
 
-See `GPU_CPU_REQUIREMENTS.md` for performance details.
 
 ## Troubleshooting
 
@@ -255,22 +249,9 @@ python digital_inspector.py test_pdfs/ \
 pip install -r requirements.txt --upgrade
 ```
 
-## Documentation
-
-- `INTEGRATION_GUIDE.md` - Detailed integration guide
-- `TRAINING_GUIDE.md` - YOLO model training instructions
-- `QUICK_START.md` - Quick start guide
-- `GPU_CPU_REQUIREMENTS.md` - Hardware requirements
-- `OPTIMAL_WORKERS.md` - Worker count optimization
-- `WINDOWS_COMPATIBILITY.md` - Windows setup guide
-
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-[Add your license here]
 
 ## Acknowledgments
 
