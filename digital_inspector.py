@@ -33,11 +33,11 @@ from draw_annotations import draw_annotations_for_page
 # Try importing YOLO
 try:
     from ultralytics import YOLO
+
     YOLO_AVAILABLE = True
 except ImportError:
     YOLO_AVAILABLE = False
     print("Warning: ultralytics not available. YOLO detection will be skipped.", file=sys.stderr)
-
 
 # Default YOLO model path
 DEFAULT_YOLO_MODEL = "runs/detect/train8/weights/best.pt"
@@ -58,28 +58,28 @@ def get_yolo_model(model_path: str = None):
     """
     Get YOLO model instance, using cache to avoid reloading.
     OPTIMIZATION: Model is loaded once and cached for all images.
-    
+
     Args:
         model_path: Path to YOLO model file (default: DEFAULT_YOLO_MODEL)
-    
+
     Returns:
         YOLO model instance or None if unavailable
     """
     if not YOLO_AVAILABLE:
         return None
-    
+
     if model_path is None:
         model_path = DEFAULT_YOLO_MODEL
-    
+
     model_file = Path(model_path)
-    
+
     # Try default model, fallback to base model
     if not model_file.exists():
         if Path(FALLBACK_YOLO_MODEL).exists():
             model_path = FALLBACK_YOLO_MODEL
         else:
             return None
-    
+
     # Use cache to avoid reloading model (MAJOR OPTIMIZATION)
     cache_key = str(Path(model_path).resolve())
     if cache_key not in _yolo_model_cache:
@@ -88,7 +88,7 @@ def get_yolo_model(model_path: str = None):
         except Exception as e:
             print(f"  Warning: Failed to load YOLO model: {e}", file=sys.stderr)
             return None
-    
+
     return _yolo_model_cache[cache_key]
 
 
@@ -96,24 +96,24 @@ def detect_with_yolo_cached(image: np.ndarray, model, conf_threshold: float = 0.
     """
     Detect signatures and stamps using YOLO model on pre-loaded image.
     OPTIMIZED: Uses pre-loaded image and cached model (no file I/O).
-    
+
     Args:
         image: OpenCV image (BGR format) - already loaded
         model: YOLO model instance (cached)
         conf_threshold: Confidence threshold for detections
-    
+
     Returns:
         List of detection dictionaries with category and bbox
     """
     if model is None:
         return []
-    
+
     try:
         # Run inference on pre-loaded image (no file I/O)
         results = model(image, conf=conf_threshold, verbose=False)
-        
+
         detections = []
-        
+
         for result in results:
             boxes = result.boxes
             for box in boxes:
@@ -122,10 +122,10 @@ def detect_with_yolo_cached(image: np.ndarray, model, conf_threshold: float = 0.
                 confidence = float(box.conf[0].cpu().numpy())
                 class_id = int(box.cls[0].cpu().numpy())
                 class_name = YOLO_CLASS_NAMES.get(class_id, f"class_{class_id}")
-                
+
                 # Convert to required format (x, y, width, height)
                 bbox = convert_xyxy_to_xywh(x1, y1, x2, y2)
-                
+
                 # Only include signatures and stamps (not QR codes from YOLO)
                 if class_name in ["signature", "stamp"]:
                     detections.append({
@@ -133,9 +133,9 @@ def detect_with_yolo_cached(image: np.ndarray, model, conf_threshold: float = 0.
                         "bbox": bbox,
                         "confidence": confidence
                     })
-        
+
         return detections
-        
+
     except Exception as e:
         print(f"  Warning: YOLO detection error: {e}", file=sys.stderr)
         return []
@@ -145,71 +145,71 @@ def detect_qr_codes_from_image(image: np.ndarray, qr_detector: RobustQRDetector,
     """
     Detect QR codes in a pre-loaded image.
     OPTIMIZED: Uses pre-loaded image instead of loading from disk.
-    
+
     Args:
         image: OpenCV image (BGR format) - already loaded
         qr_detector: RobustQRDetector instance
         fast_mode: Use fast detection mode
-    
+
     Returns:
         List of detection dictionaries with category and bbox
     """
     try:
         # Use internal method that accepts OpenCV image directly (no file I/O)
         result = qr_detector._detect_qr_codes_from_cv_image(image, fast_mode=fast_mode)
-        
+
         if result["status"] != "success" or not result["data"]:
             return []
-        
+
         detections = []
-        
+
         for qr in result["data"]:
             box = qr.get("box")
-            
+
             if box:
                 # Convert quadrilateral to (x, y, width, height)
                 bbox = convert_quad_to_xywh(box)
             else:
                 continue
-            
+
             detections.append({
                 "category": "qr",
                 "bbox": bbox,
                 "confidence": qr.get("confidence", 1.0)
             })
-        
+
         return detections
-        
+
     except Exception as e:
         print(f"  Warning: QR detection error: {e}", file=sys.stderr)
         return []
 
 
 def process_single_page(
-    img_file: Path,
-    yolo_model,
-    qr_detector: RobustQRDetector,
-    fast_mode: bool,
-    conf_threshold: float
+        img_file: Path,
+        yolo_model,
+        qr_detector: RobustQRDetector,
+        fast_mode: bool,
+        conf_threshold: float
 ) -> Tuple[str, List[Dict], str, int]:
     """
     Process a single page image.
     OPTIMIZED: Loads image once, runs all detections, returns results.
-    
+
     Args:
         img_file: Path to image file
         yolo_model: Cached YOLO model instance
         qr_detector: RobustQRDetector instance
         fast_mode: Use fast QR detection mode
         conf_threshold: YOLO confidence threshold
-    
+
     Returns:
         Tuple of (page_key, page_detections, image_path, page_num)
     """
     # Extract page number from filename
     page_num = 1
     filename = img_file.stem
-    
+
     # Try to extract page number from filename
     if '_page' in filename:
         try:
@@ -225,48 +225,48 @@ def process_single_page(
                     page_num = int(last_part)
         except:
             pass
-    
+
     page_key = f"page_{page_num}"
     image_path = str(img_file)
-    
+
     # Load image ONCE for all detections (OPTIMIZATION)
     image = cv2.imread(image_path)
     if image is None:
         return (page_key, [], image_path, page_num)
-    
+
     # Collect all detections for this page
     page_detections = []
-    
+
     # Detect with YOLO (signatures and stamps) - uses pre-loaded image
     if yolo_model is not None:
         yolo_detections = detect_with_yolo_cached(image, yolo_model, conf_threshold)
         page_detections.extend(yolo_detections)
-    
+
     # Detect QR codes - uses pre-loaded image
     if qr_detector:
         qr_detections = detect_qr_codes_from_image(image, qr_detector, fast_mode)
         page_detections.extend(qr_detections)
-    
+
     # Add image_path to each detection for JSON generator
     for det in page_detections:
         det["image_path"] = image_path
-    
+
     return (page_key, page_detections, image_path, page_num)
 
 
 def process_pdf_pages(
-    pdf_name: str,
-    image_folder: Path,
-    yolo_model_path: str = None,
-    qr_detector: RobustQRDetector = None,
-    fast_mode: bool = True,
-    conf_threshold: float = 0.25,
-    max_workers: int = 4
+        pdf_name: str,
+        image_folder: Path,
+        yolo_model_path: str = None,
+        qr_detector: RobustQRDetector = None,
+        fast_mode: bool = True,
+        conf_threshold: float = 0.25,
+        max_workers: int = 4
 ) -> Dict[str, List[Dict]]:
     """
     Process all page images for a single PDF with parallelization.
     OPTIMIZED: Processes pages in parallel, uses cached model, loads images once.
-    
+
     Args:
         pdf_name: Name of the PDF file (without extension)
         image_folder: Path to folder containing page images
@@ -275,29 +275,29 @@ def process_pdf_pages(
         fast_mode: Use fast QR detection mode
         conf_threshold: YOLO confidence threshold
         max_workers: Number of parallel workers
-    
+
     Returns:
         Dictionary mapping page keys to lists of detections
     """
     pages_data = {}
-    
+
     # Find all image files in the folder
     image_files = sorted([
         f for f in image_folder.iterdir()
         if f.is_file() and f.suffix.lower() in ['.png', '.jpg', '.jpeg']
     ])
-    
+
     if not image_files:
         return pages_data
-    
+
     print(f"  Processing {len(image_files)} page(s)...")
-    
+
     # Get cached YOLO model (load once, reuse for all pages) - already loaded in inspect_pdfs
     # This is just for backward compatibility, model should be passed in
     yolo_model = None
     if YOLO_AVAILABLE:
         yolo_model = get_yolo_model(yolo_model_path)
-    
+
     # Process pages in parallel (MAJOR OPTIMIZATION)
     with ThreadPoolExecutor(max_workers=min(max_workers, len(image_files))) as executor:
         # Submit all tasks
@@ -312,123 +312,194 @@ def process_pdf_pages(
             ): img_file
             for img_file in image_files
         }
-        
+
         # Collect results as they complete
         for future in as_completed(futures):
             try:
                 page_key, page_detections, image_path, page_num = future.result()
-                
+
                 # Draw annotations on the image if there are any detections
                 if page_detections:
                     print(f"    Page {page_num}: Found {len(page_detections)} detection(s)")
-                    
+
                     # Separate YOLO and QR detections for drawing
                     yolo_detections = [d for d in page_detections if d.get("category") in ["signature", "stamp"]]
                     qr_detections = [d for d in page_detections if d.get("category") == "qr"]
-                    
+
                     # Draw annotations on the image
                     if draw_annotations_for_page(image_path, yolo_detections, qr_detections, padding=20, thickness=12):
                         print(f"      → Annotated image with bounding boxes")
-                    
+
                     pages_data[page_key] = page_detections
                 else:
                     # Still add page with image path for page_size (even if no detections)
                     pages_data[page_key] = [{"image_path": image_path}]
-                    
+
             except Exception as e:
                 img_file = futures[future]
                 print(f"  Warning: Error processing {img_file.name}: {e}", file=sys.stderr)
                 # Add placeholder for failed page
                 pages_data[f"page_unknown"] = [{"image_path": str(img_file)}]
-    
+
     return pages_data
 
 
 def inspect_pdfs(
-    pdf_directory: str,
-    output_dir_name: str = None,
-    fast_mode: bool = True,
-    dpi: int = 200,
-    yolo_model_path: str = None,
-    conf_threshold: float = 0.25,
-    json_output_path: str = None,
-    max_workers: int = 4
+        pdf_directory: str,
+        output_dir_name: str = None,
+        fast_mode: bool = True,
+        dpi: int = 200,
+        yolo_model_path: str = None,
+        conf_threshold: float = 0.25,
+        json_output_path: str = None,
+        max_workers: int = 4
 ) -> dict:
     """
     Main inspection function: converts PDFs to images, detects all elements, and generates JSON.
-    
+
     Args:
-        pdf_directory: Path to directory containing PDF files
+        pdf_directory: Path to directory containing PDF files OR path to a single PDF file
         output_dir_name: Name for the output directory (default: pdf_directory + '_converted')
         fast_mode: Use fast QR detection mode
         dpi: Resolution for image conversion
         yolo_model_path: Path to YOLO model file
         conf_threshold: Confidence threshold for YOLO detections
         json_output_path: Path to save JSON output file (default: annotations.json in output directory)
-        
+        max_workers: Number of parallel workers for page processing
+
     Returns:
         Dictionary with inspection results
     """
-    pdf_dir = Path(pdf_directory)
-    if not pdf_dir.exists() or not pdf_dir.is_dir():
+    input_path = Path(pdf_directory)
+    if not input_path.exists():
         return {
             "status": "error",
-            "message": f"PDF directory not found: {pdf_directory}"
+            "message": f"Path not found: {pdf_directory}"
         }
-    
-    # Determine output directory path (same level as input directory)
-    parent_dir = pdf_dir.parent
-    if output_dir_name is None:
-        output_dir_name = f"{pdf_dir.name}_converted"
-    output_dir = parent_dir / output_dir_name
-    
-    print(f"{'='*60}")
-    print(f"Digital Inspector")
-    print(f"{'='*60}")
-    print(f"Input directory: {pdf_dir}")
-    print(f"Output directory: {output_dir}")
-    print(f"{'='*60}\n")
-    
-    # STEP 1: Convert PDFs to images
-    print("STEP 1: Converting PDFs to images...")
-    print("-" * 60)
-    
-    try:
-        # Create output directory if it doesn't exist
-        output_dir.mkdir(exist_ok=True)
-        
-        # Process all PDFs in the directory, save to output directory
-        conversion_summary = process_directory(
-            str(pdf_dir),
-            output_format='PNG',
-            dpi=dpi,
-            output_base_dir=str(output_dir)
-        )
-        
-        print(f"\n✓ Conversion complete!")
-        print(f"  PDFs processed: {conversion_summary['total_pdfs']}")
-        print(f"  Successful: {conversion_summary['successful']}")
-        print(f"  Failed: {conversion_summary['failed']}")
-        print(f"  Total pages: {conversion_summary['total_pages']}")
-        
-        if conversion_summary['failed'] > 0:
-            print(f"\n⚠ Warning: {conversion_summary['failed']} PDF(s) failed to convert")
-        
-    except Exception as e:
+
+    # Handle single PDF file
+    if input_path.is_file():
+        if not input_path.suffix.lower() == '.pdf':
+            return {
+                "status": "error",
+                "message": f"File is not a PDF: {pdf_directory}"
+            }
+
+        # For single PDF, create output directory in same location as PDF
+        parent_dir = input_path.parent
+        if output_dir_name is None:
+            output_dir_name = f"{input_path.stem}_converted"
+        output_dir = parent_dir / output_dir_name
+        pdf_dir = input_path  # Store actual input for return value
+
+        print(f"{'=' * 60}")
+        print(f"Digital Inspector")
+        print(f"{'=' * 60}")
+        print(f"Input PDF: {input_path}")
+        print(f"Output directory: {output_dir}")
+        print(f"{'=' * 60}\n")
+
+        # STEP 1: Convert PDF to images
+        print("STEP 1: Converting PDF to images...")
+        print("-" * 60)
+
+        try:
+            output_dir.mkdir(exist_ok=True)
+
+            # Convert single PDF
+            saved_files = convert_pdf_to_images(
+                str(input_path),
+                output_format='PNG',
+                dpi=dpi,
+                output_base_dir=str(output_dir)
+            )
+
+            conversion_summary = {
+                "total_pdfs": 1,
+                "successful": 1,
+                "failed": 0,
+                "total_pages": len(saved_files)
+            }
+
+            print(f"\n✓ Conversion complete!")
+            print(f"  PDF processed: {input_path.name}")
+            print(f"  Total pages: {conversion_summary['total_pages']}")
+
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Error during PDF conversion: {str(e)}"
+            }
+
+        # Find image folder for this PDF (created by convert_pdf_to_images)
+        image_folders = sorted([f for f in output_dir.iterdir() if f.is_dir()])
+
+    # Handle directory of PDFs (backward compatibility)
+    elif input_path.is_dir():
+        pdf_dir = input_path
+
+        # Determine output directory path (same level as input directory)
+        parent_dir = pdf_dir.parent
+        if output_dir_name is None:
+            output_dir_name = f"{pdf_dir.name}_converted"
+        output_dir = parent_dir / output_dir_name
+
+        print(f"{'=' * 60}")
+        print(f"Digital Inspector")
+        print(f"{'=' * 60}")
+        print(f"Input directory: {pdf_dir}")
+        print(f"Output directory: {output_dir}")
+        print(f"{'=' * 60}\n")
+
+        # STEP 1: Convert PDFs to images
+        print("STEP 1: Converting PDFs to images...")
+        print("-" * 60)
+
+        try:
+            # Create output directory if it doesn't exist
+            output_dir.mkdir(exist_ok=True)
+
+            # Process all PDFs in the directory, save to output directory
+            conversion_summary = process_directory(
+                str(pdf_dir),
+                output_format='PNG',
+                dpi=dpi,
+                output_base_dir=str(output_dir)
+            )
+
+            print(f"\n✓ Conversion complete!")
+            print(f"  PDFs processed: {conversion_summary['total_pdfs']}")
+            print(f"  Successful: {conversion_summary['successful']}")
+            print(f"  Failed: {conversion_summary['failed']}")
+            print(f"  Total pages: {conversion_summary['total_pages']}")
+
+            if conversion_summary['failed'] > 0:
+                print(f"\n⚠ Warning: {conversion_summary['failed']} PDF(s) failed to convert")
+
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Error during PDF conversion: {str(e)}"
+            }
+
+        # Find all image folders (each represents a converted PDF)
+        image_folders = sorted([f for f in output_dir.iterdir() if f.is_dir()])
+
+    else:
         return {
             "status": "error",
-            "message": f"Error during PDF conversion: {str(e)}"
+            "message": f"Path is neither a file nor a directory: {pdf_directory}"
         }
-    
+
     # STEP 2: Detect all elements (signatures, stamps, QR codes)
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("STEP 2: Detecting signatures, stamps, and QR codes...")
     print("-" * 60)
-    
+
     try:
         # Initialize QR detector
         qr_detector = RobustQRDetector()
-        
+
         # Load YOLO model ONCE (cached for all pages) - MAJOR OPTIMIZATION
         if YOLO_AVAILABLE:
             yolo_model = get_yolo_model(yolo_model_path)
@@ -438,26 +509,27 @@ def inspect_pdfs(
                 print(f"⚠ YOLO model not available, skipping YOLO detection")
         else:
             yolo_model = None
-        
+
         # Find all image folders (each represents a converted PDF)
         image_folders = sorted([f for f in output_dir.iterdir() if f.is_dir()])
-        
+
         if not image_folders:
             return {
                 "status": "error",
                 "message": f"No image folders found in {output_dir}"
             }
-        
+
         print(f"Found {len(image_folders)} PDF folder(s) to process\n")
-        
+
         # Collect all detections organized by PDF
         detections_by_pdf = {}
-        
+
         for folder in image_folders:
             pdf_name = f"{folder.name}.pdf"  # Add .pdf extension for JSON output
             print(f"Processing: {pdf_name}")
-            
+
             # Process all pages in this PDF (OPTIMIZED: parallel processing)
+            # max_workers is passed through to enable parallel processing
             pages_data = process_pdf_pages(
                 folder.name,
                 folder,
@@ -465,28 +537,28 @@ def inspect_pdfs(
                 qr_detector,
                 fast_mode,
                 conf_threshold,
-                max_workers
+                max_workers  # Workers argument is used here
             )
-            
+
             if pages_data:
                 detections_by_pdf[pdf_name] = pages_data
                 total_detections = sum(len(dets) for dets in pages_data.values())
                 print(f"  ✓ Found {total_detections} total detection(s) across {len(pages_data)} page(s)\n")
             else:
                 print(f"  ⚠ No detections found\n")
-        
+
         # STEP 3: Generate JSON output
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print("STEP 3: Generating JSON annotations...")
         print("-" * 60)
-        
+
         # Determine JSON output path
         if json_output_path is None:
             json_output_path = str(output_dir.parent / "annotations.json")
-        
+
         # Generate JSON
         json_result = generate_annotations_json(detections_by_pdf, json_output_path)
-        
+
         # Count total detections
         total_detections = sum(
             len(annotations)
@@ -494,15 +566,21 @@ def inspect_pdfs(
             for page_data in pdf_data.values()
             for annotations in [page_data.get("annotations", [])]
         )
-        
+
         print(f"✓ JSON generation complete!")
         print(f"  Total annotations: {total_detections}")
         print(f"  PDFs processed: {len(json_result)}")
-        
+
         # Return comprehensive results
+        # Determine input type for display
+        input_display = str(pdf_dir)
+        if pdf_dir.is_file():
+            input_display = f"PDF file: {pdf_dir.name}"
+
         return {
             "status": "success",
             "input_directory": str(pdf_dir),
+            "input_display": input_display,
             "output_directory": str(output_dir),
             "json_output": json_output_path,
             "conversion": conversion_summary,
@@ -515,7 +593,7 @@ def inspect_pdfs(
                 }
             }
         }
-    
+
     except Exception as e:
         import traceback
         return {
@@ -534,94 +612,103 @@ def main():
 Examples:
   # Process all PDFs in a directory
   python digital_inspector.py test_pdfs/
-  
+
+  # Process a single PDF file
+  python digital_inspector.py test_pdfs/document.pdf
+
+  # Process single PDF with custom workers
+  python digital_inspector.py test_pdfs/document.pdf --workers 8
+
   # Specify custom output directory name
   python digital_inspector.py test_pdfs/ --output converted_pages
-  
+
+  # Use more workers for faster processing
+  python digital_inspector.py test_pdfs/ --workers 8
+
   # Use exhaustive search mode (slower but more thorough)
   python digital_inspector.py test_pdfs/ --no-fast
-  
+
   # Custom DPI for conversion
   python digital_inspector.py test_pdfs/ --dpi 300
-  
+
   # Custom YOLO model path
   python digital_inspector.py test_pdfs/ --yolo-model models/custom.pt
-  
+
   # Custom JSON output path
   python digital_inspector.py test_pdfs/ --json-output results.json
         """
     )
-    
+
     parser.add_argument(
         'pdf_directory',
         type=str,
-        help='Path to directory containing PDF files'
+        help='Path to directory containing PDF files OR path to a single PDF file'
     )
-    
+
     parser.add_argument(
         '--output',
         type=str,
         default=None,
         help='Name for output directory (default: <input_directory>_converted)'
     )
-    
+
     parser.add_argument(
         '--dpi',
         type=int,
         default=200,
         help='Resolution (DPI) for image conversion (default: 200)'
     )
-    
+
     parser.add_argument(
         '--fast',
         action='store_true',
         default=True,
         help='Use fast QR detection mode (default: True)'
     )
-    
+
     parser.add_argument(
         '--no-fast',
         dest='fast',
         action='store_false',
         help='Disable fast mode for exhaustive QR code search'
     )
-    
+
     parser.add_argument(
         '--yolo-model',
         type=str,
         default=None,
         help=f'Path to YOLO model file (default: {DEFAULT_YOLO_MODEL})'
     )
-    
+
     parser.add_argument(
         '--conf-threshold',
         type=float,
         default=0.25,
         help='Confidence threshold for YOLO detections (default: 0.25)'
     )
-    
+
     parser.add_argument(
         '--json-output',
         type=str,
         default=None,
         help='Path to save JSON annotations file (default: annotations.json in parent of output directory)'
     )
-    
+
     parser.add_argument(
         '--workers',
         type=int,
         default=4,
         help='Number of parallel workers for page processing (default: 4)'
     )
-    
+
     parser.add_argument(
         '--json',
         action='store_true',
         help='Output results summary as JSON'
     )
-    
+
     args = parser.parse_args()
-    
+
     # Run inspection
     result = inspect_pdfs(
         args.pdf_directory,
@@ -633,15 +720,15 @@ Examples:
         json_output_path=args.json_output,
         max_workers=args.workers
     )
-    
+
     # Output results
     if args.json:
         print(json.dumps(result, indent=2))
     else:
         if result["status"] == "success":
-            print(f"\n{'='*60}")
+            print(f"\n{'=' * 60}")
             print("FINAL SUMMARY")
-            print(f"{'='*60}")
+            print(f"{'=' * 60}")
             print(f"Input: {result['input_directory']}")
             print(f"Output: {result['output_directory']}")
             print(f"JSON: {result['json_output']}")
@@ -651,7 +738,7 @@ Examples:
             print(f"\nDetection:")
             print(f"  PDFs processed: {result['detection']['pdfs_processed']}")
             print(f"  Total annotations: {result['detection']['total_annotations']}")
-            print(f"{'='*60}")
+            print(f"{'=' * 60}")
         else:
             print(f"Error: {result.get('message', 'Unknown error')}", file=sys.stderr)
             if 'traceback' in result:

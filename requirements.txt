@@ -1,3 +1,6 @@
+--extra-index-url https://download.pytorch.org/whl/cu121
+# PyTorch with CUDA 12.1 - EXACT VERSION: torch 2.5.1+cu121
+
 certifi==2025.11.12
 charset-normalizer==3.4.4
 easyocr==1.7.2
@@ -29,18 +32,22 @@ scikit-image==0.25.2
 scipy==1.16.3
 setuptools==80.9.0
 shapely==2.1.2
-sympy==1.14.0
+sympy==1.13.1  # Required by torch 2.5.1+cu121
 tifffile==2025.10.16
 timm==1.0.22
 tokenizers==0.22.1
-torch==2.9.1
-torchvision==0.24.1
+torch==2.5.1
+torchvision==0.20.1
 tqdm==4.67.1
 transformers==4.57.1
 typing_extensions==4.15.0
 ultralytics>=8.0.0
 urllib3==2.5.0
 qrcode[pil]>=7.0.0
+
+# Web framework
+Flask>=2.3.0
+Werkzeug>=2.3.0
 
 # PDF processing
 pdf2image==1.17.0
