@@ -10,6 +10,43 @@ import sys
 from pathlib import Path
 from pdf2image import convert_from_path
 
+# ============================================================================
+# POPPLER PATH CONFIGURATION FOR WINDOWS
+# ============================================================================
+# If poppler cannot be installed system-wide, you can hardcode the path here.
+# 
+# For Windows users:
+# 1. Download poppler from: https://github.com/oschwartz10612/poppler-windows/releases
+# 2. Extract to a folder (e.g., C:\poppler)
+# 3. Set the path below to point to the 'bin' folder inside poppler
+#
+# Example Windows paths:
+# POPPLER_PATH = r"C:\poppler\Library\bin"
+# POPPLER_PATH = r"D:\tools\poppler\bin"
+# POPPLER_PATH = r"C:\Users\YourName\poppler\bin"
+#
+# Leave as None to use system PATH or POPPLER_PATH environment variable
+POPPLER_PATH = None  # Set to your poppler bin path if needed (e.g., r"C:\poppler\Library\bin")
+# ============================================================================
+
+
+def get_poppler_path():
+    """
+    Get poppler path from hardcoded value, environment variable, or None.
+    Priority: hardcoded POPPLER_PATH > POPPLER_PATH env var > None (use system PATH)
+    """
+    # First check hardcoded path
+    if POPPLER_PATH and os.path.exists(POPPLER_PATH):
+        return POPPLER_PATH
+    
+    # Check environment variable
+    env_path = os.environ.get('POPPLER_PATH')
+    if env_path and os.path.exists(env_path):
+        return env_path
+    
+    # Return None to use system PATH
+    return None
+
 
 def convert_pdf_to_images_in_memory(pdf_path, dpi=200):
     """
@@ -30,8 +67,15 @@ def convert_pdf_to_images_in_memory(pdf_path, dpi=200):
         raise ValueError(f"File is not a PDF: {pdf_path}")
     
     try:
+        # Get poppler path (hardcoded, env var, or None)
+        poppler_path = get_poppler_path()
+        
         # Convert PDF to images (returns PIL Images)
-        images = convert_from_path(pdf_path, dpi=dpi)
+        # poppler_path parameter allows hardcoding the path for Windows users
+        if poppler_path:
+            images = convert_from_path(pdf_path, dpi=dpi, poppler_path=poppler_path)
+        else:
+            images = convert_from_path(pdf_path, dpi=dpi)
         
         if not images:
             raise ValueError("No pages found in PDF")
@@ -245,6 +289,11 @@ Examples:
         print("  macOS: brew install poppler", file=sys.stderr)
         print("  Ubuntu/Debian: sudo apt-get install poppler-utils", file=sys.stderr)
         print("  Windows: Download from https://github.com/oschwartz10612/poppler-windows/releases", file=sys.stderr)
+        print("\n  Windows users can also hardcode the path in pdf_to_image_converter.py:", file=sys.stderr)
+        print("    1. Download and extract poppler to a folder (e.g., C:\\poppler)", file=sys.stderr)
+        print("    2. Edit pdf_to_image_converter.py and set:", file=sys.stderr)
+        print("       POPPLER_PATH = r\"C:\\poppler\\Library\\bin\"", file=sys.stderr)
+        print("    3. Make sure the path points to the 'bin' folder containing pdftoppm.exe", file=sys.stderr)
         sys.exit(1)
         
     except Exception as e:
